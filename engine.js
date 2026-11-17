@@ -1,28 +1,16 @@
 "use strict";
 
 const FIELD = { width: 540, height: 650, left: 79, right: 461, squadY: 574, wall: 558 };
-const MAX_TROOPS = 24;
 const SOLDIER_SPACING = 15;
 const ENEMY_LANES = [119, 194, 270, 346, 421];
-const GATE_PAIRS = [
-  [{ add: 4 }, { multiply: 2 }], [{ multiply: 1.5 }, { add: 6 }],
-  [{ add: 7 }, { multiply: 1.5 }], [{ multiply: 1.5 }, { add: 8 }],
-];
-
-const WAVES = [
-  { name: "先遣群", note: "感染者逼近南门", count: 14, interval: .70, mix: ["walker"] },
-  { name: "疾行者", note: "小心两侧的疾行者", count: 20, interval: .54, mix: ["walker", "runner", "walker"] },
-  { name: "铁甲潮", note: "重甲开始进入防区", count: 28, interval: .43, mix: ["walker", "runner", "tank", "walker", "runner"] },
-  { name: "双线突进", note: "敌群从两侧同时接近", count: 36, interval: .33, mix: ["runner", "walker", "runner", "tank"] },
-  { name: "全线施压", note: "重甲与疾行者混编", count: 47, interval: .27, mix: ["tank", "walker", "runner", "runner", "walker"] },
-  { name: "巢主", note: "巢主与集群一同逼近", count: 55, interval: .24, mix: ["walker", "runner", "tank", "runner"] },
-];
 
 const ENEMIES = {
-  walker: { name: "感染者", hp: 24, speed: 38, radius: 13, impact: 7, xp: 1 },
-  runner: { name: "疾行者", hp: 17, speed: 68, radius: 10, impact: 9, xp: 1 },
-  tank: { name: "重甲", hp: 87, speed: 29, radius: 19, impact: 18, xp: 3 },
-  boss: { name: "巢主", hp: 1740, speed: 29, radius: 34, impact: 28, xp: 10 },
+  walker: { name: "感染者", hp: 24, speed: 38, radius: 13, impact: 7, energy: 1 },
+  runner: { name: "疾行者", hp: 17, speed: 68, radius: 10, impact: 9, energy: 1 },
+  tank: { name: "重甲", hp: 87, speed: 29, radius: 19, impact: 18, energy: 3 },
+  bomber: { name: "爆裂者", hp: 34, speed: 57, radius: 13, impact: 13, energy: 2 },
+  shield: { name: "护盾敌人", hp: 65, speed: 36, radius: 16, impact: 14, energy: 2 },
+  boss: { name: "巢主", hp: 1740, speed: 29, radius: 34, impact: 28, energy: 10 },
 };
 
 const UPGRADES = {
@@ -51,16 +39,15 @@ class DefenseGame {
     this.reset(prep);
   }
 
-  reset(prep = {}) {
+  reset(prep = {}, stage = this.stage ?? STAGES[0]) {
+    this.stage = stage;
     this.phase = "ready";
     this.time = 0;
     this.wave = 0;
     this.cleared = 0;
     this.kills = 0;
     this.level = 1;
-    this.xp = 0;
-    this.threshold = 6;
-    this.maxHealth = 100 + 12 * (prep.wall || 0);
+    this.maxHealth = stage.health + 12 * (prep.wall || 0);
     this.health = this.maxHealth;
     this.charge = 20 * (prep.capacitor || 0);
     this.baseDamage = 12 + (prep.ammo || 0);
@@ -79,7 +66,6 @@ class DefenseGame {
     this.remaining = 0;
     this.spawnIn = 0;
     this.intermission = 0;
-    this.bossPending = false;
   }
 
   start(prep) {
@@ -89,20 +75,20 @@ class DefenseGame {
   }
 
   nextWave() {
-    const wave = WAVES[this.wave++];
+    const wave = this.stage.waves[this.wave++];
     this.remaining = wave.count;
     this.spawnIn = this.wave === 1 ? .6 : .1;
     this.intermission = 0;
-    this.bossPending = this.wave === WAVES.length;
-    this.gate = { y: this.wave === 1 ? 157 : 81, choices: GATE_PAIRS[(this.wave - 1) % GATE_PAIRS.length] };
+    this.gate = wave.gate ? { y: this.wave === 1 ? 157 : 81, choices: wave.gate } : null;
     this.events.push({ type: "wave", text: "第 " + this.wave + " 波 · " + wave.note });
   }
 
   spawn(kind, lane) {
     const type = ENEMIES[kind];
-    const hp = type.hp * (kind === "boss" ? 1 : 1 + .22 * (this.wave - 1));
-    const speed = type.speed * (kind === "boss" ? 1 : 1 + .065 * (this.wave - 1));
-    const x = kind === "boss" ? FIELD.width / 2 : ENEMY_LANES[lane] + randomBetween(-13, 13);
+    const boss = kind === "boss";
+    const hp = type.hp * this.stage.strength * (boss ? 1 : 1 + .24 * (this.wave - 1));
+    const speed = type.speed * this.stage.speed * (boss ? 1 : 1 + .064 * (this.wave - 1));
+    const x = ENEMY_LANES[lane] + (boss ? 0 : randomBetween(-13, 13));
     this.enemies.push({
       ...type, kind, x, baseX: x, y: -type.radius, hp, maxHp: hp, speed,
       wobble: randomBetween(0, Math.PI * 2), hit: 0, slow: 0, attackIn: 0,
@@ -138,28 +124,41 @@ class DefenseGame {
     this.gate.y += 108 * dt;
     if (this.gate.y < FIELD.squadY - 20) return;
 
-    const offset = this.squadX - FIELD.width / 2;
-    if (Math.abs(offset) >= 12) {
-      const option = this.gate.choices[Number(offset > 0)];
-      const next = option.add ? this.troops + option.add : Math.ceil(this.troops * option.multiply);
-      const added = Math.min(next, MAX_TROOPS) - this.troops;
-      this.troops += added;
-      this.moveSquad(0);
-      this.emit("reinforce", { x: this.squadX, y: FIELD.squadY, life: .63 });
-      this.events.push({ type: "reinforce", text: added ? "小队增员 +" + added : "小队已满，" + MAX_TROOPS + " 人" });
-    } else {
-      this.events.push({ type: "miss", text: "错过增兵门，左右拖动选择一侧" });
-    }
+    const option = this.gate.choices[this.gateSide];
     this.gate = null;
+    if (!option) {
+      this.events.push({ type: "miss", text: "错过补给门，左右拖动选择一侧" });
+      return;
+    }
+    if (option.repair) {
+      const previous = this.health;
+      this.health = Math.min(this.maxHealth, this.health + option.repair);
+      const restored = this.health - previous;
+      this.events.push({ type: "reinforce", text: restored ? "防线修复 +" + restored : "防线耐久已满" });
+      this.emit("reinforce", { x: this.squadX, y: FIELD.squadY, life: .63 });
+      return;
+    }
+
+    const previous = this.troops;
+    const next = option.add ? previous + option.add : Math.ceil(previous * option.multiply);
+    this.troops = clamp(next, 1, this.stage.maxTroops);
+    this.moveSquad(0);
+    const change = this.troops - previous;
+    if (option.add < 0) {
+      this.events.push({ type: "casualty", text: change ? "通过减员门 −" + -change + " 人" : "小队只剩 1 人" });
+    } else {
+      this.events.push({ type: "reinforce", text: change ? "小队增员 +" + change : "小队已满，" + this.stage.maxTroops + " 人" });
+      this.emit("reinforce", { x: this.squadX, y: FIELD.squadY, life: .63 });
+    }
+  }
+
+  get gateSide() {
+    const offset = this.squadX - FIELD.width / 2;
+    return Math.abs(offset) < 12 ? -1 : Number(offset > 0);
   }
 
   emit(type, data = {}) {
     this.effects.push({ type, age: 0, ...data });
-  }
-
-  addExperience(amount) {
-    this.xp += amount;
-    this.charge = clamp(this.charge + amount * 3.6, 0, 100);
   }
 
   damage(enemy, value) {
@@ -168,14 +167,20 @@ class DefenseGame {
     enemy.hit = .11;
     if (enemy.hp > 0) return;
     this.kills++;
-    this.addExperience(enemy.xp);
+    this.charge = clamp(this.charge + enemy.energy * 2.35, 0, 100);
     this.emit("burst", { x: enemy.x, y: enemy.y, radius: enemy.radius, life: .34, seed: Math.random() });
-    if (enemy.kind === "boss") this.events.push({ type: "bossDown", text: "已击退巢主" });
+    if (enemy.kind === "boss") this.events.push({ type: "bossDown", text: "已击退首领" });
+    if (enemy.kind === "bomber") {
+      this.emit("explosion", { x: enemy.x, y: enemy.y, radius: 56, life: .42 });
+      for (const nearby of this.enemies) {
+        if (nearby.hp > 0 && distanceBetween(enemy, nearby) <= 56) this.damage(nearby, 22);
+      }
+    }
   }
 
   shoot() {
     this.recoil = .14;
-    const damage = (this.baseDamage + 3 * this.rank("power")) * (.45 + .55 * this.troops / this.columns);
+    const damage = (this.baseDamage + 3 * this.rank("power")) * (.53 + .47 * this.troops / this.columns);
     for (const { x, y } of this.soldierPositions().slice(0, this.columns)) {
       this.addBullet(x, y, 0, damage);
     }
@@ -209,8 +214,10 @@ class DefenseGame {
           hits.push({ enemy, t });
         }
       }
-      for (const { enemy } of hits.sort((a, b) => a.t - b.t)) {
-        this.damage(enemy, bullet.damage);
+      for (const { enemy, t } of hits.sort((a, b) => a.t - b.t)) {
+        if (enemy.hp <= 0) continue;
+        const centerHit = Math.abs(bullet.px + t * vx - enemy.x) < enemy.radius * .58;
+        this.damage(enemy, bullet.damage * (enemy.kind === "shield" && centerHit ? .38 : 1));
         bullet.hit.add(enemy);
         if (bullet.pierce-- === 0) {
           bullet.spent = true;
@@ -279,9 +286,7 @@ class DefenseGame {
   openUpgrade() {
     const available = Object.keys(UPGRADES).filter(key => this.rank(key) < UPGRADES[key].max);
     if (!available.length) return;
-    this.xp -= this.threshold;
     this.level++;
-    this.threshold = Math.round(6 + (this.level - 1) * 2.6);
     this.phase = "upgrade";
     const choices = [];
     const special = available.filter(key => ["blast", "ice", "arc"].includes(key));
@@ -337,13 +342,12 @@ class DefenseGame {
     if (this.remaining) {
       this.spawnIn -= dt;
       if (this.spawnIn <= 0) {
-        const wave = WAVES[this.wave - 1];
+        const wave = this.stage.waves[this.wave - 1];
         const index = wave.count - this.remaining;
-        const kind = this.bossPending && index === 7 ? "boss" : wave.mix[index % wave.mix.length];
-        const lanes = this.wave >= 4 ? [0, 4, 1, 3, 2] : [2, 1, 3, 0, 4];
+        const bossLane = wave.bosses[index];
+        const kind = bossLane === undefined ? wave.mix[index % wave.mix.length] : "boss";
         const group = Math.floor(index / (this.wave >= 4 ? 2 : 3));
-        const lane = lanes[(group + this.wave - 1) % lanes.length];
-        this.spawn(kind, lane);
+        this.spawn(kind, bossLane ?? wave.lanes[group % wave.lanes.length]);
         this.remaining--;
         this.spawnIn += wave.interval;
       }
@@ -356,7 +360,8 @@ class DefenseGame {
       const boss = enemy.kind === "boss";
       const slowFactor = enemy.slow > 0 ? (boss ? .72 : .46) : 1;
       enemy.y += enemy.speed * dt * slowFactor;
-      enemy.x = enemy.baseX + Math.sin(this.time * 2.1 + enemy.wobble) * (enemy.kind === "runner" ? 13 : 6);
+      const sway = (enemy.kind === "runner" ? 13 : 6) * this.stage.drift;
+      enemy.x = clamp(enemy.baseX + Math.sin(this.time * 2.1 + enemy.wobble) * sway, FIELD.left, FIELD.right);
       const wallY = FIELD.wall + 6 - enemy.radius;
       if (enemy.y >= wallY) {
         if (boss) {
@@ -367,14 +372,17 @@ class DefenseGame {
         } else {
           enemy.hp = 0;
         }
-        if (Math.abs(enemy.x - this.squadX) <= this.squadHalfWidth + enemy.radius && this.troops > 1) {
-          const lost = Math.min(this.troops - 1, boss || enemy.kind === "tank" ? 2 : 1);
+        const bomber = enemy.kind === "bomber";
+        const hitWidth = this.squadHalfWidth + (bomber ? 54 : enemy.radius);
+        if (Math.abs(enemy.x - this.squadX) <= hitWidth && this.troops > 1) {
+          const losses = bomber ? 3 : boss || enemy.kind === "tank" ? 2 : 1;
+          const lost = Math.min(this.troops - 1, losses);
           this.troops -= lost;
           this.events.push({ type: "casualty", text: "小队受击 −" + lost + " 人" });
         }
-        this.health = Math.max(0, this.health - enemy.impact);
+        this.health = Math.max(0, this.health - Math.round(enemy.impact * this.stage.strength));
         this.wallHit = .29;
-        this.emit("explosion", { x: enemy.x, y: FIELD.wall, radius: enemy.radius * 2, life: .35 });
+        this.emit("explosion", { x: enemy.x, y: FIELD.wall, radius: bomber ? 54 : enemy.radius * 2, life: .35 });
         this.events.push({ type: "impact" });
       }
     }
@@ -398,18 +406,20 @@ class DefenseGame {
       }
     }
     this.enemies = this.enemies.filter(enemy => enemy.hp > 0);
-    if (this.xp >= this.threshold) this.openUpgrade();
     if (this.phase !== "combat" || this.remaining || this.enemies.length || this.gate) return;
 
     if (this.cleared < this.wave) {
       this.cleared = this.wave;
       this.intermission = 3;
-      this.addExperience(2);
       this.events.push({ type: "clear", text: "第 " + this.wave + " 波已清空" });
+      if (this.cleared % 2 === 0 && this.cleared < this.stage.waves.length) {
+        this.openUpgrade();
+        return;
+      }
     }
     this.intermission -= dt;
     if (this.intermission <= 0) {
-      if (this.cleared === WAVES.length) this.finish(true);
+      if (this.cleared === this.stage.waves.length) this.finish(true);
       else this.nextWave();
     }
   }

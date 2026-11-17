@@ -27,9 +27,11 @@ function readProfile() {
     saved = JSON.parse(localStorage.getItem(storageKey));
   } catch {}
   const integer = (value, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(value) ? clamp(value, 0, max) : 0;
+  const wins = integer(saved?.wins);
   return {
     best: integer(saved?.best),
-    wins: integer(saved?.wins),
+    wins,
+    cleared: integer(saved?.cleared ?? Number(wins > 0), STAGES.length),
     scrap: integer(saved?.scrap),
     prep: Object.fromEntries(PREPARATIONS.map(({ id }) => [id, integer(saved?.prep?.[id], 3)])),
     sound: saved?.sound !== false,
@@ -37,7 +39,7 @@ function readProfile() {
 }
 
 const profile = readProfile();
-game.reset(profile.prep);
+game.reset(profile.prep, STAGES[Math.min(profile.cleared, STAGES.length - 1)]);
 
 function saveProfile() {
   try {
@@ -80,8 +82,29 @@ function renderPrep() {
   }).join("");
 }
 
+function renderCampaign() {
+  const stageIndex = STAGES.indexOf(game.stage);
+  $("arena").dataset.stage = game.stage.id;
+  $("stage-title").textContent = game.stage.name;
+  $("brief-title").textContent = game.stage.name;
+  $("brief-text").textContent = game.stage.brief;
+  $("stage-location").textContent = pad(stageIndex + 1) + " / " + game.stage.location;
+  $("start-tactics").textContent = game.stage.brief;
+  $("campaign-progress").textContent = "已通关 " + profile.cleared + " / " + STAGES.length;
+  const picker = $("stage-picker");
+  picker.replaceChildren(...STAGES.map((stage, index) => {
+    const suffix = index > profile.cleared ? " · 未解锁" : index < profile.cleared ? " · 已通关" : "";
+    const option = new Option(pad(index + 1) + "  " + stage.name + suffix, stage.id);
+    option.disabled = index > profile.cleared;
+    return option;
+  }));
+  picker.value = game.stage.id;
+  $("next-stage").hidden = game.phase !== "victory" || stageIndex + 1 >= STAGES.length;
+  $("again").className = "button " + ($("next-stage").hidden ? "action-primary" : "button-quiet");
+}
+
 function renderWaves() {
-  $("wave-list").innerHTML = WAVES.map((wave, i) => {
+  $("wave-list").innerHTML = game.stage.waves.map((wave, i) => {
     const done = i < game.cleared;
     const live = !done && i === game.wave - 1;
     return '<li' + (done ? ' class="done"' : live ? ' class="current" aria-current="step"' : "") +
@@ -91,26 +114,29 @@ function renderWaves() {
 }
 
 function renderHUD() {
-  $("wave").innerHTML = (game.wave ? pad(game.wave) : "—") + " <small>/" + pad(WAVES.length) + "</small>";
+  $("wave").innerHTML = (game.wave ? pad(game.wave) : "—") + " <small>/" + pad(game.stage.waves.length) + "</small>";
   $("troops").innerHTML = game.troops + " <small>人</small>";
   $("kills").textContent = pad(game.kills, 3);
   $("health").textContent = Math.ceil(game.health) + " / " + game.maxHealth;
   $("health-bar").max = game.maxHealth;
   $("health-bar").value = game.health;
   $("health-bar").parentElement.classList.toggle("critical", game.health < game.maxHealth * .3);
-  $("level").textContent = "等级 " + pad(game.level);
-  $("xp").textContent = Math.min(game.xp, game.threshold) + " / " + game.threshold + " XP";
-  $("xp-bar").max = game.threshold;
-  $("xp-bar").value = game.xp;
+  $("level").textContent = "装备等级 " + pad(game.level);
+  const nextUpgrade = 2 * (Math.floor(game.cleared / 2) + 1);
+  const upgradesDone = nextUpgrade >= game.stage.waves.length;
+  const upgrading = game.phase === "upgrade";
+  $("next-upgrade").textContent = upgrading ? "请选择一项升级" : upgradesDone ? "本关升级已完成" : "第 " + nextUpgrade + " 波后升级";
+  $("upgrade-progress").value = upgradesDone || upgrading ? 2 : game.cleared % 2;
   $("charge").textContent = Math.floor(game.charge) + "%";
   $("pulse").disabled = !game.pulseReady;
   const time = Math.floor(game.time);
   $("timer").textContent = pad(Math.floor(time / 60)) + ":" + pad(time % 60);
-  $("battle-status").textContent = game.phase === "ready" ? "南门防区" : game.cleared === game.wave ? "防区暂时安全" : WAVES[game.wave - 1].name;
+  $("battle-status").textContent = game.phase === "ready" ? game.stage.location : game.cleared === game.wave
+    ? "整备间隙" : game.stage.waves[game.wave - 1].name;
 }
 
 function renderChoices() {
-  $("upgrade-level").textContent = "作战等级 " + pad(game.level);
+  $("upgrade-level").textContent = "装备等级 " + pad(game.level);
   $("choices").innerHTML = game.options.map((id, index) => {
     const item = UPGRADES[id];
     const rank = game.rank(id);
@@ -128,12 +154,13 @@ function renderState(focus = true) {
   $("overlay").classList.toggle("modal", game.phase !== "ready");
   $("pause").disabled = !["combat", "paused"].includes(game.phase);
   $("pause").innerHTML = game.phase === "paused" ? '继续 <kbd>Esc</kbd>' : '暂停 <kbd>Esc</kbd>';
+  renderCampaign();
   renderLoadout();
   renderPrep();
   renderWaves();
   renderHUD();
   if (game.phase === "upgrade") renderChoices();
-  if (focus && game.phase !== "combat") screens[game.phase]?.querySelector("button")?.focus({ preventScroll: true });
+  if (focus && game.phase !== "combat") screens[game.phase]?.querySelector("button:not([hidden])")?.focus({ preventScroll: true });
   if (focus && game.phase === "combat") canvas.focus({ preventScroll: true });
 }
 
@@ -141,11 +168,15 @@ function recordResult() {
   const success = game.phase === "victory";
   profile.best = Math.max(profile.best, game.score);
   profile.wins += Number(success);
+  const stageNumber = STAGES.indexOf(game.stage) + 1;
+  if (success) profile.cleared = Math.max(profile.cleared, stageNumber);
   profile.scrap += game.reward;
   saveProfile();
-  $("end-title").textContent = success ? "南门守住了" : "防守结束";
+  $("end-title").textContent = success
+    ? stageNumber === STAGES.length ? "战役通关" : "关卡完成"
+    : "防守结束";
   $("summary").innerHTML = [
-    ["清空波数", game.cleared + " / " + WAVES.length],
+    ["清空波数", game.cleared + " / " + game.stage.waves.length],
     ["作战得分", number.format(game.score)],
     ["获得废料", "+" + game.reward],
   ].map(([label, value]) => "<div><dt>" + label + "</dt><dd>" + value + "</dd></div>").join("");
@@ -247,6 +278,19 @@ $("sound").addEventListener("click", () => {
 });
 $("start").addEventListener("click", begin);
 $("again").addEventListener("click", begin);
+$("next-stage").addEventListener("click", () => {
+  const next = STAGES.indexOf(game.stage) + 1;
+  if (game.phase !== "victory" || next >= STAGES.length || next > profile.cleared) return;
+  game.reset(profile.prep, STAGES[next]);
+  begin();
+});
+$("stage-picker").addEventListener("change", event => {
+  const index = STAGES.findIndex(stage => stage.id === event.target.value);
+  if (game.phase !== "ready" || index < 0 || index > profile.cleared) return;
+  game.reset(profile.prep, STAGES[index]);
+  renderState(false);
+  event.target.focus({ preventScroll: true });
+});
 $("pause").addEventListener("click", pause);
 $("resume").addEventListener("click", pause);
 $("abandon").addEventListener("click", () => {
@@ -352,6 +396,8 @@ const palettes = {
   walker: ["#858a6a", "#b0b496", "#4c5447", "#e6f095"],
   runner: ["#9b594e", "#bd7764", "#553d37", "#ff9a72"],
   tank: ["#7e8287", "#a5aaa3", "#42474c", "#f6be84"],
+  bomber: ["#ae683b", "#e0964c", "#594333", "#ffd19a"],
+  shield: ["#507985", "#83a9b1", "#293d47", "#a6eeff"],
   boss: ["#755a73", "#a773a0", "#483049", "#f79cc0"],
 };
 
@@ -382,6 +428,14 @@ function drawEnemy(enemy, time) {
   }
   ellipse(-r * .14, r * .62, r * .068, r * .07, glow);
   ellipse(r * .14, r * .62, r * .068, r * .07, glow);
+  if (enemy.kind === "bomber") {
+    ellipse(0, -r * .24, r * .33, r * .34, "#411d10");
+    ellipse(0, -r * .28, r * .20, r * .21, glow);
+  }
+  if (enemy.kind === "shield") {
+    line([[-r * .74, r * .70], [-r * .43, r * .95], [r * .43, r * .95], [r * .74, r * .70]], "#273e48", 6);
+    line([[-r * .67, r * .69], [-r * .41, r * .89], [r * .41, r * .89], [r * .67, r * .69]], "#9ee5ee", 2);
+  }
   if (chilled) ring(0, 0, r * 1.19, "#9befffbb", 1);
   ctx.restore();
   if (enemy.kind === "boss" || (enemy.kind === "tank" && enemy.hp < enemy.maxHp)) {
@@ -417,8 +471,8 @@ function drawGate(gate) {
   for (const [index, option] of gate.choices.entries()) {
     const left = index ? center + 12 : FIELD.left + 3;
     const right = index ? FIELD.right - 3 : center - 12;
-    const selected = game.squadX >= left && game.squadX < right;
-    const color = index ? "#8dcfff" : "#80e8ba";
+    const selected = index === game.gateSide;
+    const color = option.add < 0 ? "#ff927e" : option.repair ? "#f8ce7e" : index ? "#8dcfff" : "#80e8ba";
     const fade = ctx.createLinearGradient(0, y - 35, 0, y + 35);
     fade.addColorStop(0, color + "10");
     fade.addColorStop(.58, color + (selected ? "78" : "43"));
@@ -432,8 +486,9 @@ function drawGate(gate) {
     ctx.save();
     ctx.textAlign = "center";
     ctx.lineJoin = "round";
-    ctx.font = '800 32px "SF Mono", Menlo, monospace';
-    const label = option.add ? "+" + option.add : "×" + option.multiply;
+    ctx.font = option.repair ? '800 23px sans-serif' : '800 32px "SF Mono", Menlo, monospace';
+    const label = option.repair ? "修复 +" + option.repair
+      : option.multiply ? "×" + option.multiply : (option.add > 0 ? "+" : "−") + Math.abs(option.add);
     ctx.strokeStyle = "#122020";
     ctx.lineWidth = 5;
     ctx.strokeText(label, (left + right) / 2, y + 11);

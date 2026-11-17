@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#141618">
   <title>余烬防线 · Ember Front</title>
-  <link rel="stylesheet" href="style.css">
-  <script defer src="engine.js"></script>
-  <script defer src="game.js"></script>
+  <link rel="stylesheet" href="style.css?v=2">
+  <script defer src="campaign.js?v=2"></script>
+  <script defer src="engine.js?v=2"></script>
+  <script defer src="game.js?v=2"></script>
 </head>
 <body>
   <header class="topbar">
@@ -24,10 +25,10 @@
   </header>
   <main class="command">
     <aside class="mission panel" aria-label="作战简报">
-      <div class="panel-top"><h2>作战简报</h2><span class="mono">01 / 南门</span></div>
+      <div class="panel-top"><h2>作战简报</h2><span class="mono" id="stage-location"></span></div>
       <div class="brief">
-        <h3>南门封锁战</h3>
-        <p>带小队通过增兵门，横移扫清感染群，守住南门。</p>
+        <h3 id="brief-title"></h3>
+        <p id="brief-text"></p>
       </div>
       <ol class="wave-list" id="wave-list"></ol>
       <section class="records">
@@ -36,13 +37,13 @@
       </section>
     </aside>
 
-    <section class="combat" aria-label="南门战场">
+    <section class="combat" aria-label="战场">
       <div class="hud">
         <div class="hud-wave"><span>敌潮</span><strong id="wave">— <small>/06</small></strong></div>
         <div class="hud-troops"><span>兵力</span><strong id="troops">5 <small>人</small></strong></div>
         <div class="hud-health">
-          <div><label for="health-bar">防线</label><strong id="health">100 / 100</strong></div>
-          <progress id="health-bar" value="100" max="100"></progress>
+          <div><label for="health-bar">防线</label><strong id="health">92 / 92</strong></div>
+          <progress id="health-bar" value="92" max="92"></progress>
         </div>
         <div class="hud-kills"><span>击退</span><strong id="kills">000</strong></div>
       </div>
@@ -53,9 +54,10 @@
         <div class="toast" id="toast" role="status" hidden></div>
         <div class="overlay" id="overlay">
           <div class="start-content" id="start-screen">
-            <p class="operation"><span></span> 南门封锁战 <span></span></p>
-            <h1>守住最后防线</h1>
-            <p class="start-copy">左右滑动小队，穿过增兵门壮大兵力。<br>士兵自动射击，守住六波敌潮。</p>
+            <p class="operation" id="campaign-progress"></p>
+            <h1 id="stage-title">南门封锁战</h1>
+            <p class="start-copy" id="start-tactics"></p>
+            <label class="stage-selector" for="stage-picker">关卡<select id="stage-picker"></select></label>
             <button class="button action-primary" id="start" type="button">开始防守 <span aria-hidden="true">↗</span></button>
             <p class="start-hint">拖动战场或按 ← → 移动</p>
           </div>
@@ -76,16 +78,17 @@
             <h2 id="end-title"></h2>
             <dl class="summary" id="summary"></dl>
             <div class="modal-actions">
-              <button class="button action-primary" id="again" type="button">再次防守</button>
-              <button class="button button-quiet" id="return" type="button">返回整备</button>
+              <button class="button action-primary" id="next-stage" type="button" hidden>下一关</button>
+              <button class="button button-quiet" id="again" type="button">重打本关</button>
+              <button class="button button-quiet" id="return" type="button">关卡选择</button>
             </div>
           </section>
         </div>
       </div>
       <div class="dock">
-        <div class="xp">
-          <div><label for="xp-bar" id="level">等级 01</label><span id="xp">0 / 6 XP</span></div>
-          <progress id="xp-bar" value="0" max="6"></progress>
+        <div class="upgrade-meter">
+          <div><label for="upgrade-progress" id="level">装备等级 01</label><span id="next-upgrade">第 2 波后升级</span></div>
+          <progress id="upgrade-progress" value="0" max="2"></progress>
         </div>
         <button class="button pulse" id="pulse" type="button" disabled title="对全场造成伤害并减速">
           <span class="pulse-symbol" aria-hidden="true">ϟ</span><span>过载脉冲 <small id="charge">0%</small></span><kbd>空格</kbd>
