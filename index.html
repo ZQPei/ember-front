@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#141618">
+  <title>余烬防线 · Ember Front</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="engine.js"></script>
+  <script defer src="game.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><i></i></span>
+        <div><strong>余烬防线</strong><span>EMBER FRONT</span></div>
+      </div>
+      <div class="top-actions">
+        <button class="button button-quiet" id="sound" type="button" aria-pressed="true">音效 <b>开</b></button>
+        <button class="button button-quiet" id="pause" type="button" disabled>暂停 <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </header>
+  <main class="command">
+    <aside class="mission panel" aria-label="作战简报">
+      <div class="panel-top"><h2>作战简报</h2><span class="mono">01 / 南门</span></div>
+      <div class="brief">
+        <h3>南门封锁战</h3>
+        <p>带小队通过增兵门，横移扫清感染群，守住南门。</p>
+      </div>
+      <ol class="wave-list" id="wave-list"></ol>
+      <section class="records">
+        <h3>本地战绩</h3>
+        <dl><div><dt>最高得分</dt><dd id="record-score">—</dd></div><div><dt>防守胜场</dt><dd id="record-wins">0</dd></div></dl>
+      </section>
+    </aside>
+
+    <section class="combat" aria-label="南门战场">
+      <div class="hud">
+        <div class="hud-wave"><span>敌潮</span><strong id="wave">— <small>/06</small></strong></div>
+        <div class="hud-troops"><span>兵力</span><strong id="troops">5 <small>人</small></strong></div>
+        <div class="hud-health">
+          <div><label for="health-bar">防线</label><strong id="health">100 / 100</strong></div>
+          <progress id="health-bar" value="100" max="100"></progress>
+        </div>
+        <div class="hud-kills"><span>击退</span><strong id="kills">000</strong></div>
+      </div>
+      <div class="arena" id="arena">
+        <canvas id="field" width="540" height="650" aria-label="左右拖动移动小队，士兵自动向前开火"></canvas>
+        <div class="arena-label"><i></i><span id="battle-status">南门防区</span></div>
+        <div class="arena-timer" id="timer" aria-label="战斗用时">00:00</div>
+        <div class="toast" id="toast" role="status" hidden></div>
+        <div class="overlay" id="overlay">
+          <div class="start-content" id="start-screen">
+            <p class="operation"><span></span> 南门封锁战 <span></span></p>
+            <h1>守住最后防线</h1>
+            <p class="start-copy">左右滑动小队，穿过增兵门壮大兵力。<br>士兵自动射击，守住六波敌潮。</p>
+            <button class="button action-primary" id="start" type="button">开始防守 <span aria-hidden="true">↗</span></button>
+            <p class="start-hint">拖动战场或按 ← → 移动</p>
+          </div>
+          <section class="modal-content" id="upgrade-screen" aria-labelledby="upgrade-title" hidden>
+            <p class="operation" id="upgrade-level">作战等级 02</p>
+            <h2 id="upgrade-title">选择一项升级</h2>
+            <div id="choices" class="choices"></div>
+          </section>
+          <section class="modal-content" id="pause-screen" aria-labelledby="pause-title" hidden>
+            <h2 id="pause-title">战斗暂停</h2>
+            <div class="modal-actions">
+              <button class="button action-primary" id="resume" type="button">继续防守</button>
+              <button class="button button-quiet" id="abandon" type="button">结束本次作战</button>
+            </div>
+          </section>
+          <section class="modal-content" id="end-screen" aria-labelledby="end-title" hidden>
+            <p class="operation">作战结算</p>
+            <h2 id="end-title"></h2>
+            <dl class="summary" id="summary"></dl>
+            <div class="modal-actions">
+              <button class="button action-primary" id="again" type="button">再次防守</button>
+              <button class="button button-quiet" id="return" type="button">返回整备</button>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="dock">
+        <div class="xp">
+          <div><label for="xp-bar" id="level">等级 01</label><span id="xp">0 / 6 XP</span></div>
+          <progress id="xp-bar" value="0" max="6"></progress>
+        </div>
+        <button class="button pulse" id="pulse" type="button" disabled title="对全场造成伤害并减速">
+          <span class="pulse-symbol" aria-hidden="true">ϟ</span><span>过载脉冲 <small id="charge">0%</small></span><kbd>空格</kbd>
+        </button>
+      </div>
+    </section>
+
+    <aside class="loadout" aria-label="武装与整备">
+      <section class="panel">
+        <div class="panel-top"><h2>武装配置</h2><span class="mono" id="equipped">1 已启用</span></div>
+        <div class="arsenal" id="arsenal"></div>
+      </section>
+      <section class="panel prep" id="prep">
+        <div class="panel-top"><h2>基地整备</h2><span class="scrap" id="scrap">0 废料</span></div>
+        <p>结算所得废料可用于永久升级。</p>
+        <div id="preparations"></div>
+      </section>
+      <section class="panel controls">
+        <div class="panel-top"><h2>操作</h2></div>
+        <dl><div><dt>小队横移</dt><dd>左右拖动 / ← →</dd></div><div><dt>过载脉冲</dt><dd>点按钮 / 空格</dd></div><div><dt>升级选择</dt><dd>点卡片 / 1–3</dd></div></dl>
+      </section>
+    </aside>
+  </main>
+  <footer>余烬防线 <span>·</span> 本地单人游戏</footer>
+</body>
+</html>

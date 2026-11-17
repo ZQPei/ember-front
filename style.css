@@ -1,0 +1,168 @@
+:root {
+  color-scheme: dark;
+  --bg: #141618;
+  --panel: #1b1e20;
+  --raised: #222628;
+  --border: #333739;
+  --text: #f3eee5;
+  --muted: #a8aaa6;
+  --dim: #777d7a;
+  --orange: #f7a45d;
+  --green: #a5c993;
+  --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { min-width: 295px; margin: 0; background: radial-gradient(ellipse at 50% 0, #27241f 0, transparent 48%) }
+button { font: inherit }
+button:focus-visible { outline: 2px solid #ffd6a6; outline-offset: 3px }
+button:disabled { cursor: default }
+kbd, .mono { font: 11px var(--mono); font-variant-numeric: tabular-nums }
+kbd { padding: 3px 5px; border: 1px solid #4a4c4a; border-radius: 3px; color: #c3c0b8 }
+.topbar { border-bottom: 1px solid #333332; background: #181a1be8 }
+.topbar-inner { width: min(1376px, 100% - 64px); min-height: 75px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px }
+.brand, .top-actions { display: flex; align-items: center; gap: 12px }
+.brand-mark { display: grid; width: 40px; height: 43px; place-items: center; color: #1b1b1c; background: var(--orange); clip-path: polygon(50% 0, 100% 24%, 100% 72%, 50% 100%, 0 72%, 0 24%) }
+.brand-mark i { width: 14px; height: 18px; display: block; background: currentColor; clip-path: polygon(53% 0, 100% 64%, 83% 92%, 50% 100%, 16% 92%, 0 64%, 33% 31%, 37% 60%, 63% 49%) }
+.brand strong, .brand span:not(.brand-mark) { display: block }
+.brand strong { font-size: 20px; letter-spacing: .08em }
+.brand div span { margin-top: 3px; color: var(--dim); font: 10px var(--mono); letter-spacing: .15em }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 38px; border: 1px solid transparent; border-radius: 5px; padding: 0 12px; cursor: pointer; transition: background .12s, border-color .12s }
+.button-quiet { background: #222526; border-color: #3b3e3e; color: var(--text); font-size: 13px }
+.button-quiet:hover:not(:disabled) { background: #303435; border-color: #646762 }
+.button-quiet:disabled { opacity: .45 }
+.button-quiet b { color: var(--green); font-size: 11px }
+.command { display: grid; grid-template-columns: minmax(190px, 246px) minmax(0, 620px) minmax(210px, 260px); justify-content: center; align-items: start; gap: 22px; padding-top: 26px; margin: 0 auto; width: min(1376px, 100% - 64px) }
+.panel, .combat { background: var(--panel); border: 1px solid var(--border); border-radius: 9px; overflow: hidden }
+.panel-top { min-height: 53px; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 15px; border-bottom: 1px solid #323636 }
+.panel-top h2, .brief h3, .records h3 { margin: 0; font-size: 14px; font-weight: 700 }
+.panel-top .mono { color: var(--dim) }
+.brief { padding: 16px 15px 10px }
+.brief h3 { color: var(--orange) }
+.brief p, .prep p { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 7px 0 0 }
+.wave-list { list-style: none; padding: 0 12px; margin: 5px 0 15px }
+.wave-list li { height: 45px; display: flex; align-items: center; gap: 10px; color: var(--muted); border: 1px solid transparent; border-bottom-color: #2a2d2f; padding: 0 7px; font-size: 13px }
+.wave-list li.current { background: #342b24; border-color: #63482f; border-radius: 5px; color: #ffd2a6 }
+.wave-list li.done { color: var(--green) }
+.wave-list li .mono { color: var(--dim) }
+.wave-list .wave-mark { margin-left: auto; color: var(--dim); font-size: 11px }
+.wave-list .current .wave-mark { color: var(--orange) }
+.wave-list .done .wave-mark { color: var(--green) }
+.records { padding: 15px; background: #181b1c; border-top: 1px solid var(--border) }
+.records dl, .controls dl { margin: 7px 0 0 }
+.records dl div, .controls dl div { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; line-height: 2.1 }
+dd { margin: 0 }
+.records dd { color: var(--text); font: 13px var(--mono) }
+.hud { min-height: 61px; display: grid; grid-template-columns: 76px 61px minmax(0, 1fr) 62px; gap: 15px; align-items: center; padding: 8px 15px; background: #1d2021 }
+.hud-wave, .hud-troops, .hud-kills { display: grid; gap: 3px }
+.hud-kills { text-align: right }
+.hud-wave > span, .hud-troops > span, .hud-kills > span, .hud-health label, .xp label { color: var(--muted); font-size: 11px }
+.hud strong { font: 700 20px var(--mono); color: var(--text) }
+.hud strong small { color: var(--dim); font-size: 12px }
+.hud-wave strong, .hud-troops strong { white-space: nowrap }
+.hud-troops strong { color: #a5e3ed }
+.hud-health > div, .xp > div { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px }
+.hud-health strong { color: var(--green); font: 11px var(--mono) }
+.hud-health.critical strong { color: #ffa293 }
+progress { display: block; appearance: none; width: 100%; height: 5px; background: #35393a; border: 0; border-radius: 4px; overflow: hidden; --fill: var(--green) }
+progress::-webkit-progress-bar { background: #35393a }
+progress::-webkit-progress-value { background: var(--fill); border-radius: 4px }
+progress::-moz-progress-bar { background: var(--fill); border-radius: 4px }
+.critical progress { --fill: #f17c6d }
+.arena { position: relative; height: clamp(510px, calc(100svh - 254px), 770px); isolation: isolate; overflow: hidden; background: #232725 url("assets/south-gate.jpg") center / 100% 100%; border-block: 1px solid #3b3e3c }
+.arena::after { position: absolute; inset: 0; content: ""; box-shadow: inset 0 0 44px #0009; pointer-events: none }
+#field { display: block; width: 100%; height: 100%; outline: none; touch-action: none; cursor: grab }
+#field:active { cursor: grabbing }
+.arena-label, .arena-timer { position: absolute; top: 13px; pointer-events: none; z-index: 1; background: #171918df; border: 1px solid #5a554a; border-radius: 4px; padding: 6px 8px; font-size: 11px; color: #e4dacf }
+.arena-label { left: 12px; display: flex; align-items: center; gap: 6px }
+.arena-label i { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 7px #ff8d4c }
+.arena-timer { right: 12px; font-family: var(--mono) }
+.toast { position: absolute; z-index: 1; top: 56px; left: 50%; translate: -50%; width: max-content; max-width: 92%; padding: 7px 12px; color: #fcd5ac; background: #191a18e8; border: 1px solid #77563b; border-radius: 4px; font-size: 12px; text-align: center; pointer-events: none }
+.overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at 50% 50%, #1717136b 0, #151513bb 57%, #14151258 100%); overflow: auto }
+.overlay.modal { background: #111315db; backdrop-filter: blur(3px) }
+.start-content, .modal-content { width: 100%; max-width: 398px; text-align: center }
+.operation { display: flex; justify-content: center; align-items: center; gap: 9px; margin: 0 0 14px; color: #ffd2a9; font-size: 13px; letter-spacing: .13em }
+.operation span { background: #f7a45d99; height: 1px; width: 20px }
+h1 { margin: 0; font-size: clamp(32px, 4.5vw, 54px); font-weight: 900; letter-spacing: -.04em; line-height: 1.17; text-shadow: 0 3px 28px #15120d, 0 2px 4px #25170e }
+.start-copy { margin: 17px 0 22px; color: #ded3c2; line-height: 1.65; font-size: 14px }
+.start-hint { margin: 14px 0 0; color: #cbc1b2; font-size: 11px }
+.action-primary { background: var(--orange); border-color: #ffc18b; color: #241a15; min-height: 49px; padding: 0 23px; font-weight: 800; gap: 16px; box-shadow: 0 3px 20px #b7643229 }
+.action-primary:hover { background: #ffc095 }
+.modal-content h2 { font-size: clamp(26px, 4vw, 36px); margin: 0 0 17px; letter-spacing: -.035em }
+.modal-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 9px }
+.choices { display: grid; gap: 8px }
+.choice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; background: #222628; color: var(--text); border: 1px solid #51544c; padding: 9px 10px; border-radius: 6px; text-align: left; cursor: pointer }
+.choice:hover { background: #34322c; border-color: var(--orange) }
+.choice strong, .choice small { display: block }
+.choice strong { margin-bottom: 4px; font-size: 14px }
+.choice small { color: var(--muted); font-size: 12px; line-height: 1.45 }
+.choice .choose-key { padding: 5px 7px; border: 1px solid #4d514d; border-radius: 3px; color: var(--muted) }
+.summary { display: flex; justify-content: center; gap: 12px; margin: 0 auto 20px }
+.summary div { padding: 10px; background: #282b2a; min-width: 77px; border: 1px solid var(--border); border-radius: 5px }
+.summary dt { margin-bottom: 5px; color: var(--muted); font-size: 11px }
+.summary dd { font: 700 16px var(--mono) }
+.dock { min-height: 59px; display: flex; align-items: center; gap: 15px; padding: 7px 12px; background: #1d2021 }
+.xp { min-width: 0; flex: 1 }
+.xp progress { --fill: var(--orange) }
+.xp span { color: var(--dim); font: 11px var(--mono) }
+.pulse { background: #22282b; border-color: #45545a; color: #e1f0f5; font-size: 12px; padding: 0 9px }
+.pulse:disabled { color: #a4b0b4 }
+.pulse:not(:disabled) { background: #285365; border-color: #7acedf }
+.pulse:not(:disabled):hover { background: #397085 }
+.pulse small { color: #93d6e8; font: 11px var(--mono) }
+.pulse-symbol { color: #91dcf5; font: 700 23px/1 var(--mono) }
+.loadout { display: grid; gap: 14px }
+.arsenal { display: grid; padding: 9px }
+.weapon { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 4px; border-bottom: 1px solid #303435 }
+.weapon:last-child { border: 0 }
+.weapon strong { display: block; font-size: 13px }
+.weapon small { display: block; margin-top: 4px; font-size: 11px; color: var(--muted) }
+.weapon.inactive strong, .weapon.inactive .weapon-level { color: var(--dim) }
+.weapon.inactive .skill-icon { filter: saturate(.3); opacity: .6 }
+.weapon-level { font: 11px var(--mono); color: var(--orange) }
+.skill-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--tint, var(--orange)); border: 1px solid color-mix(in srgb, currentColor, #242828 65%); background: color-mix(in srgb, currentColor, #222628 88%); border-radius: 5px; font: 700 19px var(--mono) }
+.scrap { color: var(--orange); font-size: 11px }
+.prep p { padding: 0 13px; margin-bottom: 5px }
+#preparations { padding: 5px 12px 10px }
+.preparation { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-bottom: 1px solid #303435; padding: 7px 0 }
+.preparation:last-child { border: 0 }
+.preparation strong { display: block; font-size: 12px }
+.preparation small { color: var(--muted); font-size: 10px }
+.preparation button { min-height: 30px; font-size: 11px; padding-inline: 7px }
+.controls dl { padding: 0 13px 10px }
+.controls dd { color: #d3d1c9 }
+footer { display: flex; justify-content: center; align-items: center; gap: 6px; padding: 18px 10px max(18px, env(safe-area-inset-bottom)); color: var(--dim); font-size: 11px }
+@media (max-width: 1040px) {
+  .command { grid-template-columns: minmax(0, 560px) minmax(195px, 240px); gap: 14px }
+  .mission { display: none }
+}
+@media (max-width: 700px) {
+  .topbar-inner, .command { width: calc(100% - 20px) }
+  .topbar-inner { min-height: 57px }
+  .brand { gap: 8px }
+  .brand-mark { width: 29px; height: 32px }
+  .brand strong { font-size: 16px }
+  .brand div span { font-size: 8px; margin-top: 2px }
+  .top-actions { gap: 6px }
+  .top-actions kbd, .pulse kbd { display: none }
+  .top-actions .button { min-height: 36px; padding-inline: 9px }
+  .command { display: flex; flex-direction: column; padding-top: 9px; gap: 10px }
+  .combat, .loadout { width: 100% }
+  .hud { min-height: 48px; grid-template-columns: 54px 44px minmax(0, 1fr) 36px; padding: 5px 9px; gap: 8px }
+  .hud strong { font-size: 16px }
+  .hud-health strong { font-size: 10px }
+  .arena { height: clamp(340px, calc(100svh - 191px), 660px) }
+  .dock { min-height: 53px; gap: 9px; padding-inline: 8px }
+  .pulse { min-height: 40px }
+  .loadout { gap: 10px }
+  .controls { display: none }
+}
+@media (max-height: 570px) and (orientation: landscape) {
+  .arena { height: 390px }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: none }
+}
